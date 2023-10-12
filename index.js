@@ -82,14 +82,13 @@ bot.onText(/\/today/, async function onTodayText(msg) {
   let group = await getGroupId(msg)
   if (group) {
     bot.sendMessage(msg.chat.id, `Success! My group_id is ${group.id}. My group name ${group.username}`)
-
     /*
     Role of Crypto Infrastructures
     ⏰10.10 11:00am-12:00pm
     🔗https://event.sola.day/event/454
-  
      */
     bot.sendMessage(msg.chat.id, "Here's a list of all the events today.... enjoy! :)");
+
     let today = new Date(Date.now()) //todays date
 
     let today_start = new Date(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate() - 1}T17:00:00.000Z`) // This is midnight for IDC TZ
@@ -98,16 +97,15 @@ bot.onText(/\/today/, async function onTodayText(msg) {
     let response = await axios.get(`${process.env.url}/event/list?group_id=${group.id}&event_order=start_time_asc&page=1&start_time_from=${today_start.valueOf() / 1000}&start_time_to=${today_end.valueOf()}`)
     let events = response.data.events
     let formattedResponse = []
-    // formattedResponse.push(`https://event.sola.day/${username}`)
+    formattedResponse.push(`Check  👉 https://event.sola.day/${group.username} for all events`, "\r")
     events.forEach((event) => {
       let start = new Date(event.start_time)
       let end = new Date(event.ending_time)
 
       formattedResponse.push(event.title)
-      formattedResponse.push(`⏰ ${start.toLocaleString()}`)
-      formattedResponse.push(`⏰ ${end.toLocaleString()}`)
+      formattedResponse.push(`⏰ ${start.toLocaleDateString()} ${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}`)
       formattedResponse.push(`🔗 https://event.sola.day/event/${event.id}`)
-      formattedResponse.push("\r\n")
+      formattedResponse.push("\n")
     })
 
     bot.sendMessage(msg.chat.id, formattedResponse.join("\r\n"))

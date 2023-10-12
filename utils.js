@@ -1,8 +1,9 @@
 // A function to return user's sola group id
 const axios = require('axios');
+require('dotenv').config()
 
 const getGroupId = async (msg) => {
-    const response = await axios.get('https://prod.sociallayer.im/event/group_list')
+    const response = await axios.get(`${process.env.url}/event/group_list`)
 
     if (msg.chat.title) {
       const re = new RegExp(msg.chat.title);
