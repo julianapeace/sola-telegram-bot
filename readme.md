@@ -1,6 +1,8 @@
-Link: t.me/sola_event_bot
+# Sola Event Bot
+
+Link: [Telegram bot](t.me/sola_event_bot)
 
 
-
-npm install
-npm start
+### Get started
+- npm install
+- npm start

@@ -1,8 +1,10 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const ethers = require('ethers')
+const getGroupId = require('./utils.js')
 
 require('dotenv').config()
+
 
 // at 7am every morning TH timezone, bot makes GET request to SOLA API to retrieve a list of events for the day
 // send message to the group everyday at the same time.
@@ -12,14 +14,6 @@ require('dotenv').config()
 const token = process.env.token;
 
 const bot = new TelegramBot(token, { polling: true });
-
-async function getGroupId(resp, chatId, bot) {
-  const response = await axios.get('https://prod.sociallayer.im/event/group_list')
-  response.forEach(r => {
-    console.log(r.username)
-  })
-  bot.sendMessage(chatId, `User is verified`);
-}
 
 // Matches /gif
 bot.onText(/\/gif/, async function onGifText(msg) {
@@ -59,61 +53,67 @@ bot.onText(/\/echo (.+)/, function onEchoText(msg, match) {
 });
 
 // Matches /admin
-bot.onText(/\/admin/, async function onAdminText(msg, match) {
-  const response = await axios.get('https://prod.sociallayer.im/event/group_list')
-
-  if (msg.chat.title) {
-    console.log(msg.chat.title)
-    const re = new RegExp(msg.chat.title);
-    console.log(re)
-  
-    console.log(response.data.groups[0]);
-
-    response.data.groups.forEach(r => {
-      console.log(re.exec(r.usernames))
-    })
+bot.onText(/\/admin/, async function onAdminText(msg) {
+  let group = await getGroupId(msg)
+  if (group) {
+    bot.sendMessage(msg.chat.id, `Success! My group_id is ${group.id}. My group name ${group.username}`)
+  } else {
+    bot.sendMessage(msg.chat.id, "I am not in a group right now.")
   }
 
 });
 
 // Matches /test
 bot.onText(/\/test/, async function onTestText(msg, match) {
-  channel_name = msg.chat.title
   console.log(msg.chat)
+});
+
+// Matches /members
+bot.onText(/\/members/, async function onMembersText(msg, match) {
+  console.log(msg.chat)
+  let response = await bot.getChatAdministrators(msg.chat.id)
+  let admin_id = response[0].user.id
+  let data = await bot.getChatMember(msg.chat.id, admin_id)
+  bot.sendMessage(msg.chat.id, JSON.stringify(data, null, 2));
 });
 
 // Matches /today
 bot.onText(/\/today/, async function onTodayText(msg) {
-  // retrieve group_id
+  let group = await getGroupId(msg)
+  if (group) {
+    bot.sendMessage(msg.chat.id, `Success! My group_id is ${group.id}. My group name ${group.username}`)
 
-  /*
-  Role of Crypto Infrastructures
-  ⏰10.10 11:00am-12:00pm
-  🔗https://event.sola.day/event/454
+    /*
+    Role of Crypto Infrastructures
+    ⏰10.10 11:00am-12:00pm
+    🔗https://event.sola.day/event/454
+  
+     */
+    bot.sendMessage(msg.chat.id, "Here's a list of all the events today.... enjoy! :)");
+    let today = new Date(Date.now()) //todays date
 
-   */
-  let today = new Date(Date.now()) //todays date
+    let today_start = new Date(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate() - 1}T17:00:00.000Z`) // This is midnight for IDC TZ
+    let today_end = today_start.valueOf() / 1000 + 86399 // + 24 hours
 
-  let today_start = new Date(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate() - 1}T17:00:00.000Z`) // This is midnight for IDC TZ
-  let today_end = today_start.valueOf()/1000 + 86399 // + 24 hours
+    let response = await axios.get(`${process.env.url}/event/list?group_id=${group.id}&event_order=start_time_asc&page=1&start_time_from=${today_start.valueOf() / 1000}&start_time_to=${today_end.valueOf()}`)
+    let events = response.data.events
+    let formattedResponse = []
+    // formattedResponse.push(`https://event.sola.day/${username}`)
+    events.forEach((event) => {
+      let start = new Date(event.start_time)
+      let end = new Date(event.ending_time)
 
-  let response = await axios.get(`${process.env.url}/event/list?group_id=${process.env.group_id}&event_order=start_time_asc&page=1&start_time_from=${today_start.valueOf()/1000}&start_time_to=${today_end.valueOf()}`)
-  let events = response.data.events
-  let formattedResponse = []
-  // formattedResponse.push(`https://event.sola.day/${username}`)
-  events.forEach((event) => {
-    let start = new Date(event.start_time)
-    let end = new Date(event.ending_time)
+      formattedResponse.push(event.title)
+      formattedResponse.push(`⏰ ${start.toLocaleString()}`)
+      formattedResponse.push(`⏰ ${end.toLocaleString()}`)
+      formattedResponse.push(`🔗 https://event.sola.day/event/${event.id}`)
+      formattedResponse.push("\r\n")
+    })
 
-    formattedResponse.push(event.title)
-    formattedResponse.push(`⏰ ${start.toLocaleString()}`)
-    formattedResponse.push(`⏰ ${end.toLocaleString()}`)
-    formattedResponse.push(`🔗 https://event.sola.day/event/${event.id}`)
-    formattedResponse.push("\r\n")
-  })
-
-  bot.sendMessage(msg.chat.id, formattedResponse.join("\r\n"))
-  // bot.sendMessage(msg.chat.id, "Here's a list of all the events today.... enjoy! :)");
+    bot.sendMessage(msg.chat.id, formattedResponse.join("\r\n"))
+  } else {
+    bot.sendMessage(msg.chat.id, "I am not in a group right now.")
+  }
 });
 
 // Matches /photo
